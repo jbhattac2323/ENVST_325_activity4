@@ -16,6 +16,9 @@ weather$DateET<-mdy_hm(weather$Date, tz="America/New_York")
 weather_check<- weather%>%
   filter(is.na(weather$DateET))
 weather$DateET
+weather$doy <- yday(weather$DateF)
+weather$year <- year(weather$DateF)
+weather$month <- month(weather$DateF)
 
 weather$DateF[2]%--%weather$DateF[3]
 int_length(weather$DateF[2]%--%weather$DateF[3])
@@ -60,14 +63,63 @@ weather$airMA<-airMA
 
 #Prompt 2:
 #Time window we want:
-solartime<- weather%>%
-  filter(DateF)
+#solartime<- weather%>%
+#  filter(DateF)
 #couldn't finish this in class
 
 
+##### Homework-----
+#Q1: weather station data manager - precipitation data with the village of Clinton
+#Ensure no issues w bird excrement or frozen precipitation
+#Exclude precipitation if air temp below 0
+#Exclude if X and Y level observations for more than 2 degrees
+
+# add a column to weather:
+weather$precip.QC <- ifelse(weather$doy >= 121 & weather$doy <= 188 & weather$year == 2021, 
+                            # evaluate if the doy is between May 1 and July 7 2021
+                            NA, # value if true
+                            weather$Precip) # value if false: uses original precipitation observation
+
+weatherreport<-weather%>%
+  filter(XLevel<2)%>%
+  filter(YLevel<2)%>%
+  filter(AirTemp>=0)
 
 
-  
+# Cld monitor pH levels for understanding bird excrement presence
+
+#Q2: Flag battery below 8.5V
+
+
+weather$BatFlag<- ifelse(weather$BatVolt <= 8500, # check if at or below zero
+                             1, # if true: set flag to 1
+                             0) # if false: set flag to zero
+
+
+#Q3: 
+
+
+
+#Q5: Format data to each day
+
+#filter 2021 month 3 and 4, 1.6 C
+
+totalprecMarchApril<- weather%>%
+  filter(year==2021)%>%
+  filter(month==4 | month==3)%>%
+  group_by(doy)%>%
+  summarize(totprecip=sum(Precip),mintemp=min(AirTemp))
+
+precipQC<-as.numeric(NA)
+
+for (i in 2: nrow(totalprecMarchApril)){ 
+  precipQC[i]<-ifelse(totalprecMarchApril$mintemp[i]<=1.6 | totalprecMarchApril$mintemp[i-1]<=1.6,NA, 
+                      totalprecMarchApril$totprecip[i])
+} 
+
+totalprecMarchApril$precipqc<-precipQC
+
+
 
 
 
