@@ -46,7 +46,7 @@ soil.Files<- list.files("/cloud/project/activity04/soil")
 # set up variable to be used in for loop
 soillist<-list()
 
-for (i in length(soil.Files)){
+for (i in 1: length(soil.Files)){
   soillist[i]<-read.csv(paste0("/cloud/project/activity04/soil/", soil.Files[i]))
 }
 str(soillist)
@@ -74,36 +74,49 @@ weather$airMA<-airMA
 #Exclude precipitation if air temp below 0
 #Exclude if X and Y level observations for more than 2 degrees
 
-# add a column to weather:
-weather$precip.QC <- ifelse(weather$doy >= 121 & weather$doy <= 188 & weather$year == 2021, 
-                            # evaluate if the doy is between May 1 and July 7 2021
-                            NA, # value if true
-                            weather$Precip) # value if false: uses original precipitation observation
+#addressing bird excrement by assigning NA to the bad dates
 
-weatherreport<-weather%>%
-  filter(XLevel<2)%>%
-  filter(YLevel<2)%>%
-  filter(AirTemp>=0)
+weather$precip.QC <- ifelse(
+  weather$doy >= 121 & weather$doy <= 188 & weather$year == 2021 |
+    abs(weather$XLevel) > 2 |
+    abs(weather$YLevel) > 2 |
+    weather$AirTemp < 0,
+  NA,
+  weather$Precip
+)
 
-
-# Cld monitor pH levels for understanding bird excrement presence
+sum(is.na(weather$precip.QC))
 
 #Q2: Flag battery below 8.5V
-
-
-weather$BatFlag<- ifelse(weather$BatVolt <= 8500, # check if at or below zero
+weather$BatFlag<- ifelse(weather$BatVolt < 8500, # check if Battery is below 8.5V or 8500mV (the units of the data).
                              1, # if true: set flag to 1
                              0) # if false: set flag to zero
 
 
-#Q3: 
+#Q3:Check unrealistic data ranges. 
+#Possible Ranges: Radiation: 0 to 1750 W/m^2. Air temp: -50 to 60 C
+outlierremoval <- function(x, min, max) {
+  clean <- ifelse(x < min | x > max, NA, x)
+}
+weather$SolRad.QC <- outlierremoval(weather$SolRad, 0, 1750) #full range of sensor since don't have intuition about solar radiation values
+
+weather$AirTemp.QC <- outlierremoval(weather$AirTemp, -35, 48) #realistic min and max temps
+
+#Q4: plot of winter air temperatures in Jan - Mar of 2021
+winter2021 <- weather %>%
+  filter(year==2021 & month<=3)
+
+ggplot(winter2021)+
+  aes(x=DateET, y=AirTemp)+
+  geom_line()+
+  labs(title = "Winter Air Temperatures in 2021",
+       x = "Winter 2021",
+       y = "Air Temperature (in °C)")+
+  theme_classic()+
+  theme(plot.title = element_text(hjust = 0.5)) #center
 
 
-
-#Q5: Format data to each day
-
-#filter 2021 month 3 and 4, 1.6 C
-
+#Q5:
 totalprecMarchApril<- weather%>%
   filter(year==2021)%>%
   filter(month==4 | month==3)%>%
@@ -115,13 +128,25 @@ precipQC<-as.numeric(NA)
 for (i in 2: nrow(totalprecMarchApril)){ 
   precipQC[i]<-ifelse(totalprecMarchApril$mintemp[i]<=1.6 | totalprecMarchApril$mintemp[i-1]<=1.6,NA, 
                       totalprecMarchApril$totprecip[i])
-} 
-
+} #35 F corresponds to approx. 1.6 C.
 totalprecMarchApril$precipqc<-precipQC
 
+#How many non NA values?
+nonNA<-nrow(totalprecMarchApril)-sum(is.na(totalprecMarchApril$precipqc))
+nonNA
 
+#Q6 
 
+timeCheck<-function(x,seconds){ #updated to allow time input (seconds)
+  intervals<-x[-length(x)] %--%x[-1]
+  interval_times<-int_length(intervals)
+  intervals[interval_times!=seconds]
+}
 
+for (i in 1:nrow(soilData)){
+  test <- ymd_hm(c(soilData[i,]))
+  print(timeCheck(test,3600))
+}
 
 
 
