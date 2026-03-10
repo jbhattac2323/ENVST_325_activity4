@@ -46,8 +46,10 @@ soil.Files<- list.files("/cloud/project/activity04/soil")
 # set up variable to be used in for loop
 soillist<-list()
 
+test <- read.csv(paste0("/cloud/project/activity04/soil/", soil.Files[1]))
+
 for (i in 1: length(soil.Files)){
-  soillist[i]<-read.csv(paste0("/cloud/project/activity04/soil/", soil.Files[i]))
+  soillist[[i]]<-read.csv(paste0("/cloud/project/activity04/soil/", soil.Files[i]))
 }
 str(soillist)
 soilData<-do.call("rbind",soillist)
@@ -72,13 +74,13 @@ weather$airMA<-airMA
 #Q1: weather station data manager - precipitation data with the village of Clinton
 #Ensure no issues w bird excrement or frozen precipitation
 #Exclude precipitation if air temp below 0
-#Exclude if X and Y level observations for more than 2 degrees
+#Exclude if X and Y level observations for more than 2 degrees 
 
-#addressing bird excrement by assigning NA to the bad dates
+#addressing bird excrement by assigning NA to the bad dates based on tutorial
 
 weather$precip.QC <- ifelse(
   weather$doy >= 121 & weather$doy <= 188 & weather$year == 2021 |
-    abs(weather$XLevel) > 2 |
+    abs(weather$XLevel) > 2 | #we care abt magnitude of level so absolute sign
     abs(weather$YLevel) > 2 |
     weather$AirTemp < 0,
   NA,
@@ -116,7 +118,7 @@ ggplot(winter2021)+
   theme(plot.title = element_text(hjust = 0.5)) #center
 
 
-#Q5:
+#Q5: 
 totalprecMarchApril<- weather%>%
   filter(year==2021)%>%
   filter(month==4 | month==3)%>%
@@ -135,18 +137,17 @@ totalprecMarchApril$precipqc<-precipQC
 nonNA<-nrow(totalprecMarchApril)-sum(is.na(totalprecMarchApril$precipqc))
 nonNA
 
-#Q6 
 
+#Q6 [Cite: Help from Prof. Kropp]
 timeCheck<-function(x,seconds){ #updated to allow time input (seconds)
   intervals<-x[-length(x)] %--%x[-1]
   interval_times<-int_length(intervals)
   intervals[interval_times!=seconds]
 }
 
-for (i in 1:nrow(soilData)){
-  test <- ymd_hm(c(soilData[i,]))
-  print(timeCheck(test,3600))
-}
+test <- ymd_hm(soilData$Timestamp)
+
+timeCheck(test, 3600)
 
 
 
